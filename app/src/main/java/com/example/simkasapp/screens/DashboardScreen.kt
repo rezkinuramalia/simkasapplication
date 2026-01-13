@@ -1,8 +1,11 @@
 package com.example.simkasapp.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +18,7 @@ import androidx.navigation.NavController
 import com.example.simkasapp.api.RetrofitClient
 import com.example.simkasapp.models.DashboardAngkatanResponse
 import com.example.simkasapp.models.DashboardKelasResponse
+import com.example.simkasapp.models.Kategori
 import com.example.simkasapp.ui.theme.BpsBlue
 import com.example.simkasapp.ui.theme.BpsGreen
 import com.example.simkasapp.ui.theme.BpsOrange
@@ -24,8 +28,6 @@ import retrofit2.Response
 import java.text.NumberFormat
 import java.util.Locale
 
-// --- FUNGSI BARU: CONTENT ONLY (Tanpa Scaffold/TopBar) ---
-// Ini yang dipanggil oleh MainContainerScreen agar tidak double Scaffold
 @Composable
 fun DashboardScreenContent(token: String, role: String, navController: NavController) {
     Column(
@@ -34,7 +36,6 @@ fun DashboardScreenContent(token: String, role: String, navController: NavContro
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // TAMPILAN BERDASARKAN ROLE
         when (role) {
             "ADMIN_ANGKATAN" -> AdminDashboardContent(token, navController)
             "BENDAHARA_KELAS" -> BendaharaDashboardContent(token, navController)
@@ -43,54 +44,49 @@ fun DashboardScreenContent(token: String, role: String, navController: NavContro
     }
 }
 
-// --- FUNGSI LAMA (WRAPPER) ---
-// Tetap dipertahankan kalau ada yang manggil DashboardScreen secara langsung (misal testing)
-@Composable
-fun DashboardScreen(navController: NavController) {
-    // Kosong atau redirect jika diperlukan, tapi sebaiknya gunakan MainContainerScreen
-}
-
 // === 1. KONTEN ADMIN ANGKATAN ===
 @Composable
 fun AdminDashboardContent(token: String, navController: NavController) {
-    var data by remember { mutableStateOf<DashboardAngkatanResponse?>(null) }
+    var listWadah by remember { mutableStateOf<List<Kategori>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        RetrofitClient.instance.getDashboardAngkatan(token).enqueue(object : Callback<DashboardAngkatanResponse> {
-            override fun onResponse(call: Call<DashboardAngkatanResponse>, response: Response<DashboardAngkatanResponse>) {
-                if(response.isSuccessful) data = response.body()
+        RetrofitClient.instance.getAllKategori(token).enqueue(object : Callback<List<Kategori>> {
+            override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
+                isLoading = false
+                if (response.isSuccessful) listWadah = response.body() ?: emptyList()
             }
-            override fun onFailure(call: Call<DashboardAngkatanResponse>, t: Throwable) {}
+            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) {
+                isLoading = false
+            }
         })
     }
 
     Column {
-        Text("Statistik Angkatan", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
+        Text("Kelola Kas Angkatan", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
         Spacer(Modifier.height(16.dp))
 
-        if (data != null) {
-            StatCard("Saldo Angkatan", formatRupiah(data!!.saldoKas), BpsBlue, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth()) {
-                StatCard("Pemasukan", formatRupiah(data!!.totalPemasukan), BpsGreen, Modifier.weight(1f))
-                StatCard("Pengeluaran", formatRupiah(data!!.totalPengeluaran), BpsOrange, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(8.dp))
-            StatCard("Menunggu Validasi", "${data!!.totalTransaksiPending} Transaksi", Color.Red, Modifier.fillMaxWidth())
-        } else {
+        if (isLoading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        } else if (listWadah.isEmpty()) {
+            Text("Belum ada tempat bayar yang dibuat.", color = Color.Gray)
+        } else {
+            listWadah.forEach { wadah ->
+                WadahItemCardDashboard(wadah) {
+                    navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
+                    navController.navigate("wadah_validasi_screen")
+                }
+                Spacer(Modifier.height(8.dp))
+            }
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Aksi Cepat", fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-
         Button(
             onClick = { navController.navigate("create_kategori") },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = BpsBlue)
         ) {
-            Text("Buat Tempat Penarikan (Wadah)")
+            Text("Buat Tempat Bayar Baru")
         }
     }
 }
@@ -98,41 +94,40 @@ fun AdminDashboardContent(token: String, navController: NavController) {
 // === 2. KONTEN BENDAHARA KELAS ===
 @Composable
 fun BendaharaDashboardContent(token: String, navController: NavController) {
-    var data by remember { mutableStateOf<DashboardKelasResponse?>(null) }
+    var listWadah by remember { mutableStateOf<List<Kategori>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        RetrofitClient.instance.getDashboardKelas(token).enqueue(object : Callback<DashboardKelasResponse> {
-            override fun onResponse(call: Call<DashboardKelasResponse>, response: Response<DashboardKelasResponse>) {
-                if(response.isSuccessful) data = response.body()
+        RetrofitClient.instance.getAllKategori(token).enqueue(object : Callback<List<Kategori>> {
+            override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
+                isLoading = false
+                if (response.isSuccessful) listWadah = response.body() ?: emptyList()
             }
-            override fun onFailure(call: Call<DashboardKelasResponse>, t: Throwable) {}
+            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) {
+                isLoading = false
+            }
         })
     }
 
     Column {
-        Text("Statistik Kelas", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
+        Text("Kelola Tempat Bayar Kelas", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
         Spacer(Modifier.height(16.dp))
 
-        if (data != null) {
-            StatCard("Saldo Kelas", formatRupiah(data!!.saldoKas), BpsBlue, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth()) {
-                StatCard("Pemasukan", formatRupiah(data!!.totalPemasukan), BpsGreen, Modifier.weight(1f))
-                StatCard("Pengeluaran", formatRupiah(data!!.totalPengeluaran), BpsOrange, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth()) {
-                StatCard("Belum Bayar", "${data!!.anggotaBelumBayarBulanIni} Orang", Color.Red, Modifier.weight(1f))
-                StatCard("Pending", "${data!!.transaksiPending}", BpsOrange, Modifier.weight(1f))
-            }
-        } else {
+        if (isLoading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        } else if (listWadah.isEmpty()) {
+            Text("Belum ada tempat bayar yang dibuat.", color = Color.Gray)
+        } else {
+            listWadah.forEach { wadah ->
+                WadahItemCardDashboard(wadah) {
+                    navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
+                    navController.navigate("wadah_validasi_screen")
+                }
+                Spacer(Modifier.height(8.dp))
+            }
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Aksi Cepat", fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-
         Button(
             onClick = { navController.navigate("create_kategori") },
             modifier = Modifier.fillMaxWidth(),
@@ -158,29 +153,59 @@ fun AnggotaDashboardContent(token: String, navController: NavController, usernam
                 }
             }
         }
-
         Spacer(Modifier.height(24.dp))
         Text("Info Tagihan", fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Silakan cek menu 'Bayar' di bawah untuk melihat daftar iuran/kas yang tersedia.", color = Color.Gray)
+                Text("Silakan cek menu 'Bayar' di bawah untuk melihat tagihan iuran kelas.", color = Color.Gray)
             }
         }
     }
 }
 
-// Helper UI
+// --- KOMPONEN UI TAMBAHAN ---
+
+@Composable
+fun WadahItemCardDashboard(wadah: Kategori, onClick: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Notifications,
+                contentDescription = null,
+                tint = BpsOrange,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(wadah.nama, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BpsBlue)
+                Text(
+                    text = if ((wadah.keterangan?.length ?: 0) > 35) "${wadah.keterangan?.take(35)}..." else wadah.keterangan ?: "-",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun StatCard(title: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Card(
         colors = CardDefaults.cardColors(containerColor = color),
-        modifier = modifier.padding(4.dp).height(100.dp)
+        modifier = modifier
+            .padding(4.dp)
+            .height(100.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(12.dp),
@@ -193,6 +218,7 @@ fun StatCard(title: String, value: String, color: Color, modifier: Modifier = Mo
     }
 }
 
+// Fungsi ini dibuat Publik agar bisa dipakai di screen lain (seperti WadahValidasiScreen)
 fun formatRupiah(number: Double): String {
     val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     return format.format(number)

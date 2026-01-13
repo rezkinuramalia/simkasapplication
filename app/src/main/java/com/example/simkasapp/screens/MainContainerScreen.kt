@@ -88,6 +88,7 @@ fun MainContainerScreen(navController: NavController) {
             when (currentScreen) {
                 BottomNavItem.Home -> DashboardScreenContent(token, role, navController)
                 BottomNavItem.Pay -> WadahListScreen(navController, token)
+                BottomNavItem.History -> HistoryScreen(navController, token)
                 BottomNavItem.History -> Text("Halaman Riwayat (Segera Hadir)") // Nanti diganti HistoryScreen
                 BottomNavItem.Profile -> ProfileScreen(navController, token)
             }

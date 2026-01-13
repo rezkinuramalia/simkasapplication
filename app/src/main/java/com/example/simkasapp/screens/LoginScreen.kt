@@ -1,5 +1,6 @@
 package com.example.simkasapp.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,34 +42,80 @@ fun LoginScreen(navController: NavController) {
         }
         isLoading = true
         val req = LoginRequest(emailOrNim, password)
+        
+        // Log untuk debugging
+        Log.d("LoginScreen", "Attempting login for user: $emailOrNim")
 
         RetrofitClient.instance.login(req).enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 isLoading = false
+                Log.d("LoginScreen", "Response received: Code=${response.code()}")
+                
                 if (response.isSuccessful) {
                     val body = response.body()
-                    val token = "Bearer ${body?.token}"
-                    val role = body?.role ?: "ANGGOTA" // Default fallback
+                    if (body != null) {
+                        val token = body.token ?: ""
+                        val role = body.role ?: "ANGGOTA"
+                        val userId = body.id ?: 0
+                        
+                        Log.d("LoginScreen", "Login success - UserID: $userId, Role: $role")
 
-                    // Simpan Token & Role
-                    val prefs = context.getSharedPreferences("SIMKAS_PREFS", 0)
-                    prefs.edit()
-                        .putString("TOKEN", token)
-                        .putString("ROLE", role)
-                        .apply()
+                        // Simpan Token, Role, & UserID
+                        val prefs = context.getSharedPreferences("SIMKAS_PREFS", 0)
+                        prefs.edit()
+                            .putString("TOKEN", token)
+                            .putString("ROLE", role)
+                            .putInt("ID_USER", userId)
+                            .apply()
 
-                    // Pindah ke Dashboard
-                    navController.navigate("dashboard") {
-                        popUpTo("login") { inclusive = true }
+                        // Pindah ke Dashboard
+                        navController.navigate("dashboard") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                        
+                        Toast.makeText(context, "Login berhasil!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.e("LoginScreen", "Response body is null")
+                        Toast.makeText(context, "Login gagal: Response kosong dari server", Toast.LENGTH_LONG).show()
                     }
                 } else {
-                    Toast.makeText(context, "Login Gagal! Cek kredensial.", Toast.LENGTH_SHORT).show()
+                    val errorMsg = when (response.code()) {
+                        401 -> "Username atau password salah"
+                        404 -> "Endpoint tidak ditemukan. Cek URL backend"
+                        500 -> "Server error. Cek backend apakah running"
+                        else -> "Login gagal! Code: ${response.code()}"
+                    }
+                    Log.e("LoginScreen", "Login failed: $errorMsg")
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                 }
             }
 
             override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
                 isLoading = false
-                Toast.makeText(context, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+                
+                // Pesan error yang lebih informatif
+                val errorMessage = when {
+                    t.message?.contains("Failed to connect") == true -> 
+                        "Gagal koneksi ke server.\n" +
+                        "1. Pastikan backend running di port 8080\n" +
+                        "2. HP dan laptop dalam WiFi yang sama\n" +
+                        "3. IP: 192.168.110.91"
+                    
+                    t.message?.contains("timeout") == true -> 
+                        "Koneksi timeout.\n" +
+                        "Pastikan backend berjalan dan IP benar"
+                    
+                    t.message?.contains("Unable to resolve host") == true -> 
+                        "Tidak dapat menemukan server.\n" +
+                        "Cek IP address: 192.168.110.91"
+                    
+                    else -> "Error: ${t.message}"
+                }
+                
+                Log.e("LoginScreen", "Connection failed", t)
+                Log.e("LoginScreen", "Error message: ${t.message}")
+                
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
             }
         })
     }

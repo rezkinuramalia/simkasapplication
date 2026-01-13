@@ -29,21 +29,38 @@ fun CreateKategoriScreen(navController: NavController) {
             return
         }
 
-        isLoading = true
         val prefs = context.getSharedPreferences("SIMKAS_PREFS", 0)
-        val token = prefs.getString("TOKEN", "") ?: ""
+        val token = prefs.getString("TOKEN", null) // Default null untuk cek apakah ada
 
-        // Kirim ke Backend
+        // 🔍 DIAGNOSA 1: Cek apakah token benar-benar ada?
+        if (token.isNullOrEmpty()) {
+            Toast.makeText(context, "FATAL: Token Kosong! Silakan Login Ulang.", Toast.LENGTH_LONG).show()
+            // Paksa logout jika token hilang
+            navController.navigate("login") { popUpTo(0) }
+            return
+        }
+
+        // 🔍 DIAGNOSA 2: Pastikan Token diawali "Bearer "
+        // Jika di LoginScreen belum pakai "Bearer", kita tambahkan manual disini untuk jaga-jaga
+        val finalToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
+
+        isLoading = true
         val req = KategoriRequest(namaInfo, keterangan)
 
-        RetrofitClient.instance.createKategori(token, req).enqueue(object : Callback<Kategori> {
+        // Debug Log (Cek di Logcat Android kata kunci "TOKEN_CHECK")
+        android.util.Log.d("TOKEN_CHECK", "Mengirim Token: $finalToken")
+
+        RetrofitClient.instance.createKategori(finalToken, req).enqueue(object : Callback<Kategori> {
             override fun onResponse(call: Call<Kategori>, response: Response<Kategori>) {
                 isLoading = false
                 if (response.isSuccessful) {
-                    Toast.makeText(context, "Berhasil membuat Info Kas!", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack() // Kembali ke Dashboard
+                    Toast.makeText(context, "Berhasil simpan!", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
                 } else {
-                    Toast.makeText(context, "Gagal: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    // Tampilkan pesan error dari server jika ada
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    Toast.makeText(context, "Gagal ${response.code()}: $errorBody", Toast.LENGTH_LONG).show()
+                    android.util.Log.e("API_ERROR", "Error: $errorBody")
                 }
             }
             override fun onFailure(call: Call<Kategori>, t: Throwable) {

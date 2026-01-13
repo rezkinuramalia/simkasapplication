@@ -44,7 +44,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0") // Update minor
     implementation("androidx.activity:activity-compose:1.9.0") // Update minor
-
+    implementation("androidx.compose.runtime:runtime-livedata:1.6.0")
+    implementation("androidx.compose.material:material-icons-extended")
     // BOM (Bill of Materials) - Mengatur versi Compose secara otomatis
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
 
