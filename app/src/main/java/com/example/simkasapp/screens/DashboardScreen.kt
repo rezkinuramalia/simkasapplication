@@ -47,23 +47,37 @@ fun DashboardScreenContent(token: String, role: String, navController: NavContro
 // === 1. KONTEN ADMIN ANGKATAN ===
 @Composable
 fun AdminDashboardContent(token: String, navController: NavController) {
+    DashboardListContent(token, navController, "Kelola Kas Angkatan")
+}
+
+// === 2. KONTEN BENDAHARA KELAS ===
+@Composable
+fun BendaharaDashboardContent(token: String, navController: NavController) {
+    DashboardListContent(token, navController, "Kelola Tempat Bayar Kelas")
+}
+
+// Komponen Reusable untuk List Dashboard (Admin & Bendahara)
+@Composable
+fun DashboardListContent(token: String, navController: NavController, title: String) {
     var listWadah by remember { mutableStateOf<List<Kategori>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit) {
-        RetrofitClient.instance.getAllKategori(token).enqueue(object : Callback<List<Kategori>> {
+    fun loadData() {
+        isLoading = true
+        // PANGGIL ENDPOINT 'MANAGED' (Yang dibuat sendiri)
+        RetrofitClient.instance.getKategoriManaged(token).enqueue(object : Callback<List<Kategori>> {
             override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
                 isLoading = false
                 if (response.isSuccessful) listWadah = response.body() ?: emptyList()
             }
-            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) {
-                isLoading = false
-            }
+            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) { isLoading = false }
         })
     }
 
+    LaunchedEffect(Unit) { loadData() }
+
     Column {
-        Text("Kelola Kas Angkatan", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
         Spacer(Modifier.height(16.dp))
 
         if (isLoading) {
@@ -72,10 +86,13 @@ fun AdminDashboardContent(token: String, navController: NavController) {
             Text("Belum ada tempat bayar yang dibuat.", color = Color.Gray)
         } else {
             listWadah.forEach { wadah ->
-                WadahItemCardDashboard(wadah) {
-                    navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
-                    navController.navigate("wadah_validasi_screen")
-                }
+                WadahItemCardDashboard(wadah, token,
+                    onClick = {
+                        navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
+                        navController.navigate("wadah_validasi_screen") // Atau detail
+                    },
+                    onRefresh = { loadData() } // Refresh list setelah update status
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -91,50 +108,80 @@ fun AdminDashboardContent(token: String, navController: NavController) {
     }
 }
 
-// === 2. KONTEN BENDAHARA KELAS ===
 @Composable
-fun BendaharaDashboardContent(token: String, navController: NavController) {
-    var listWadah by remember { mutableStateOf<List<Kategori>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+fun WadahItemCardDashboard(
+    wadah: Kategori,
+    token: String,
+    onClick: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        RetrofitClient.instance.getAllKategori(token).enqueue(object : Callback<List<Kategori>> {
-            override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
-                isLoading = false
-                if (response.isSuccessful) listWadah = response.body() ?: emptyList()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = if (wadah.aktif) Color.White else Color(0xFFEEEEEE)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = if(wadah.aktif) BpsOrange else Color.Gray,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(wadah.nama, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if(wadah.aktif) BpsBlue else Color.Gray)
+                    Text(
+                        text = if ((wadah.keterangan?.length ?: 0) > 30) "${wadah.keterangan?.take(30)}..." else wadah.keterangan ?: "-",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
             }
-            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) {
-                isLoading = false
+
+            // Tombol Nonaktifkan / Status
+            if (wadah.aktif) {
+                IconButton(onClick = { showDialog = true }) {
+                    Icon(painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_close_clear_cancel), contentDescription = "Nonaktifkan", tint = Color.Red)
+                }
+            } else {
+                Surface(color = Color.Gray, shape = MaterialTheme.shapes.small) {
+                    Text("NONAKTIF", modifier = Modifier.padding(4.dp), fontSize = 10.sp, color = Color.White)
+                }
             }
-        })
+        }
     }
 
-    Column {
-        Text("Kelola Tempat Bayar Kelas", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BpsBlue)
-        Spacer(Modifier.height(16.dp))
-
-        if (isLoading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        } else if (listWadah.isEmpty()) {
-            Text("Belum ada tempat bayar yang dibuat.", color = Color.Gray)
-        } else {
-            listWadah.forEach { wadah ->
-                WadahItemCardDashboard(wadah) {
-                    navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
-                    navController.navigate("wadah_validasi_screen")
-                }
-                Spacer(Modifier.height(8.dp))
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Nonaktifkan Wadah?") },
+            text = { Text("Wadah ini tidak akan bisa menerima pembayaran lagi. Data history tetap aman.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        RetrofitClient.instance.updateStatusKategori(token, wadah.id, false)
+                            .enqueue(object : Callback<Kategori> {
+                                override fun onResponse(call: Call<Kategori>, response: Response<Kategori>) {
+                                    showDialog = false
+                                    onRefresh() // Refresh list
+                                }
+                                override fun onFailure(call: Call<Kategori>, t: Throwable) {}
+                            })
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) { Text("Nonaktifkan") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Batal") }
             }
-        }
-
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = { navController.navigate("create_kategori") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = BpsBlue)
-        ) {
-            Text("Buat Tagihan Kelas")
-        }
+        )
     }
 }
 

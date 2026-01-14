@@ -6,10 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState // Pastikan library sudah ditambahkan di build.gradle
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,10 +30,8 @@ fun HistoryScreen(navController: NavController, token: String) {
     var listHistory by remember { mutableStateOf<List<HistoryTransaksi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Mengambil LiveData dari savedStateHandle navigasi
+    // Mengambil LiveData dari savedStateHandle navigasi untuk refresh otomatis
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-
-    // PERBAIKAN: Tambahkan 'remember' pada fallback state
     val refreshTrigger by savedStateHandle?.getLiveData<Boolean>("refresh_history")
         ?.observeAsState(false)
         ?: remember { mutableStateOf(false) }
@@ -57,11 +56,10 @@ fun HistoryScreen(navController: NavController, token: String) {
     // Load data pertama kali
     LaunchedEffect(Unit) { loadData() }
 
-    // Load ulang data jika ada trigger refresh (misal setelah upload)
+    // Load ulang data jika ada trigger refresh
     LaunchedEffect(refreshTrigger) {
         if (refreshTrigger) {
             loadData()
-            // Reset trigger agar tidak looping
             navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh_history")
         }
     }
@@ -102,26 +100,54 @@ fun HistoryItemCard(item: HistoryTransaksi) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Baris Atas: Nama Wadah & Status Label
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(item.namaWadah ?: "Pembayaran Kas", fontWeight = FontWeight.Bold, color = BpsBlue)
+                Text(
+                    text = item.namaWadah ?: "Pembayaran Kas",
+                    fontWeight = FontWeight.Bold,
+                    color = BpsBlue,
+                    modifier = Modifier.weight(1f)
+                )
                 Text(
                     text = item.statusValidasi ?: "PENDING",
                     color = Color.White,
                     fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .background(colorStatus, shape = MaterialTheme.shapes.small)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
-            Spacer(Modifier.height(4.dp))
+
+            Spacer(Modifier.height(8.dp))
+
+            // Info Detail
             Text("Nominal: ${formatRupiahLocal(item.nominal)}", fontWeight = FontWeight.SemiBold)
-            Text("Ket: ${item.keterangan}", fontSize = 12.sp, color = Color.Gray)
+            Text("Ket: ${item.keterangan ?: "-"}", fontSize = 12.sp, color = Color.Gray)
             Text("Tgl: ${item.tanggalBayar ?: "-"}", fontSize = 12.sp, color = Color.Gray)
+
+            // [LOGIKA TAMPILAN CATATAN PENOLAKAN]
+            if (item.statusValidasi == "REJECTED" && !item.catatanAdmin.isNullOrEmpty()) {
+                Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray)
+
+                Text(
+                    text = "Alasan Penolakan:",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red
+                )
+                Text(
+                    text = item.catatanAdmin,
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    fontStyle = FontStyle.Italic
+                )
+            }
         }
     }
 }
 
-// Menggunakan nama fungsi yang unik/private agar tidak bentrok dengan DashboardScreen
+// Helper format rupiah private agar tidak bentrok
 private fun formatRupiahLocal(number: Double): String {
     val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     return format.format(number)

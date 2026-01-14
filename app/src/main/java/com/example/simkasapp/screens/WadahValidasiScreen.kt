@@ -98,7 +98,8 @@ fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kate
 }
 
 fun doValidasi(token: String, id: Long, status: String, onSuccess: () -> Unit) {
-    RetrofitClient.instance.validasiTransaksi(token, id, status).enqueue(object : Callback<TransaksiResponse> {
+    // Tambahkan 'null' sebagai parameter terakhir (catatan)
+    RetrofitClient.instance.validasiTransaksi(token, id, status, null).enqueue(object : Callback<TransaksiResponse> {
         override fun onResponse(call: Call<TransaksiResponse>, response: Response<TransaksiResponse>) {
             if (response.isSuccessful) onSuccess()
         }

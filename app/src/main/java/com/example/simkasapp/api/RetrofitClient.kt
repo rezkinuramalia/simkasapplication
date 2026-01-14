@@ -12,7 +12,7 @@ object RetrofitClient {
     // HAPUS "/api/" DI BELAKANG URL!
     // ApiService sudah punya awalan "api/...", jadi di sini cukup sampai port 8080 saja.
     // Pastikan akhiri dengan tanda "/"
-    private const val BASE_URL = "http://192.168.1.5:8080/"
+    const val BASE_URL = "http://192.168.1.10:8080/"
 
     private const val TAG = "RetrofitClient"
 

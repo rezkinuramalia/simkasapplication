@@ -28,52 +28,38 @@ import retrofit2.Response
 fun WadahListScreen(navController: NavController, token: String) {
     var listWadah by remember { mutableStateOf<List<Kategori>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
 
-        RetrofitClient.instance.getAllKategori(authToken).enqueue(object : Callback<List<Kategori>> {
+        // PANGGIL ENDPOINT 'PAYMENT' (Yang harus dibayar)
+        RetrofitClient.instance.getKategoriPayment(authToken).enqueue(object : Callback<List<Kategori>> {
             override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
                 isLoading = false
                 if (response.isSuccessful) {
-                    val body = response.body()
-                    Log.d("SIMKAS_DEBUG", "Data Berhasil Masuk: ${body?.size} item")
-                    listWadah = body?.sortedByDescending { it.id } ?: emptyList()
-                } else {
-                    errorMessage = "Gagal: ${response.code()}"
-                    Log.e("SIMKAS_DEBUG", "Error API: ${response.errorBody()?.string()}")
+                    listWadah = response.body() ?: emptyList() // Backend sudah mengurutkan (Aktif di atas)
                 }
             }
-
-            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) {
-                isLoading = false
-                errorMessage = "Koneksi Gagal"
-                Log.e("SIMKAS_DEBUG", "Fatal Error", t)
-            }
+            override fun onFailure(call: Call<List<Kategori>>, t: Throwable) { isLoading = false }
         })
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Tagihan & Tempat Bayar", style = MaterialTheme.typography.headlineSmall, color = BpsBlue, fontWeight = FontWeight.Bold)
+        Text("Daftar Tagihan", style = MaterialTheme.typography.headlineSmall, color = BpsBlue, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = BpsBlue)
-            }
-        } else if (errorMessage != null) {
-            Text(errorMessage!!, color = Color.Red)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (listWadah.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Daftar Kosong. Belum ada kategori yang dibuat.", color = Color.Gray)
-            }
+            Text("Tidak ada tagihan saat ini.", color = Color.Gray)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(listWadah) { wadah ->
                     WadahItemCard(wadah) {
-                        navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
-                        navController.navigate("wadah_detail")
+                        if (wadah.aktif) {
+                            navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
+                            navController.navigate("wadah_detail")
+                        }
                     }
                 }
             }
@@ -84,37 +70,45 @@ fun WadahListScreen(navController: NavController, token: String) {
 @Composable
 fun WadahItemCard(wadah: Kategori, onClick: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+        colors = CardDefaults.cardColors(containerColor = if(wadah.aktif) Color.White else Color(0xFFEEEEEE)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if(wadah.aktif) 4.dp else 0.dp),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = wadah.aktif) { onClick() }
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Gunakan icon Notifications (Pasti Ada di Library Default)
-            Icon(Icons.Default.Notifications, contentDescription = null, tint = BpsOrange, modifier = Modifier.size(40.dp))
+            Icon(
+                Icons.Default.Notifications,
+                contentDescription = null,
+                tint = if(wadah.aktif) BpsOrange else Color.Gray,
+                modifier = Modifier.size(40.dp)
+            )
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(wadah.nama, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BpsBlue)
-                Text(wadah.keterangan ?: "-", fontSize = 13.sp, color = Color.Gray)
-
-                // Menampilkan Nominal
+                Text(wadah.nama, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if(wadah.aktif) BpsBlue else Color.Gray)
                 Text(
-                    text = "Rp ${String.format("%,.0f", wadah.nominal ?: 0.0)}",
-                    fontWeight = FontWeight.Bold, color = BpsBlue, fontSize = 14.sp
+                    text = "Rp ${String.format("%,.0f", wadah.nominal)}",
+                    fontWeight = FontWeight.Bold,
+                    color = if(wadah.aktif) BpsBlue else Color.Gray,
+                    fontSize = 14.sp
                 )
             }
 
-            // PERBAIKAN ERROR: Tambahkan ?: "" agar tidak null
-            Surface(
-                color = if((wadah.level ?: "") == "ANGKATAN") Color(0xFFE3F2FD) else Color(0xFFF1F8E9),
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text(
-                    text = wadah.level ?: "KELAS", // Perbaikan Argument Mismatch
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if((wadah.level ?: "") == "ANGKATAN") Color.Blue else Color(0xFF2E7D32)
-                )
+            if (!wadah.aktif) {
+                Surface(color = Color.Gray, shape = MaterialTheme.shapes.small) {
+                    Text("NONAKTIF", modifier = Modifier.padding(4.dp), fontSize = 10.sp, color = Color.White)
+                }
+            } else {
+                Surface(
+                    color = if(wadah.level == "ANGKATAN") Color(0xFFE3F2FD) else Color(0xFFF1F8E9),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = wadah.level ?: "KELAS",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if(wadah.level == "ANGKATAN") Color.Blue else Color(0xFF2E7D32)
+                    )
+                }
             }
         }
     }

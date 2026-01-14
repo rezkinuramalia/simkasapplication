@@ -43,7 +43,8 @@ data class Kategori(
     val keterangan: String?,
     val level: String?,
     val nominal: Double = 0.0,
-    val totalTerkumpul: Double = 0.0
+    val totalTerkumpul: Double = 0.0,
+    val aktif: Boolean = true,
 ) : Serializable
 
 data class KategoriRequest(val nama: String, val keterangan: String, val nominal: Double = 0.0)
@@ -87,6 +88,7 @@ data class TransaksiResponse(
     val jenisTransaksi: String?,
     val statusValidasi: String?,
     val buktiBayar: String?,
+    val catatanAdmin: String? = null,
 
     // TAMBAHAN FIELD BARU (Ini yang menyebabkan error 'namaPengirim')
     val namaPengirim: String?,
@@ -104,7 +106,7 @@ data class TransaksiRequest(
 
 data class HistoryTransaksi(
     val id: Long, val nominal: Double, val keterangan: String,
-    val statusValidasi: String, val tanggalBayar: String?, val namaWadah: String?
+    val statusValidasi: String, val tanggalBayar: String?, val namaWadah: String?, val catatanAdmin: String? = null
 ) : Serializable
 
 data class ChangePasswordRequest(

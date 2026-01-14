@@ -71,8 +71,8 @@ fun CreateKategoriScreen(navController: NavController) {
     }
 
     Column(modifier = Modifier.padding(24.dp)) {
-        Text("Buat Info Penarikan Kas", style = MaterialTheme.typography.headlineSmall)
-        Text("Admin Angkatan / Bendahara", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        Text("Buat Tempat Penarikan Kas", style = MaterialTheme.typography.headlineSmall)
+        Text("Masukkan judul dan keterangan untuk Tempat Penarikan Kas Anda.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
 
         Spacer(Modifier.height(24.dp))
 

@@ -75,7 +75,8 @@ interface ApiService {
     fun validasiTransaksi(
         @Header("Authorization") token: String,
         @Path("id") idTransaksi: Long,
-        @Query("status") status: String // "VALID" atau "REJECTED"
+        @Query("status") status: String, // "VALID" atau "REJECTED"
+        @Query("catatan") catatan: String?
     ): Call<TransaksiResponse>
 
     // 2. Endpoint List Pending per Wadah
@@ -94,4 +95,21 @@ interface ApiService {
 
     @GET("api/master/kategori") // Pastikan ini memanggil endpoint yang menjalankan getKategoriForPaymentByUser()
     fun getKategori(): Call<List<Kategori>>
+
+
+    // UNTUK BERANDA: List Wadah yang DIKELOLA (Created by me)
+    @GET("api/master/kategori/managed")
+    fun getKategoriManaged(@Header("Authorization") token: String): Call<List<Kategori>>
+
+    // UNTUK MENU BAYAR: List Wadah yang HARUS DIBAYAR (Assigned to me)
+    @GET("api/master/kategori/payment")
+    fun getKategoriPayment(@Header("Authorization") token: String): Call<List<Kategori>>
+
+    // UPDATE STATUS (Nonaktifkan)
+    @PUT("api/master/kategori/{id}/status")
+    fun updateStatusKategori(
+        @Header("Authorization") token: String,
+        @Path("id") id: Long,
+        @Query("aktif") aktif: Boolean
+    ): Call<Kategori>
 }

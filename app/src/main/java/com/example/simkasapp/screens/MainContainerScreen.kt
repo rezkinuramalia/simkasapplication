@@ -20,8 +20,8 @@ import com.example.simkasapp.ui.theme.BpsOrange
 
 // Define Menu Items
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
-    object Home : BottomNavItem("home", "Beranda", Icons.Default.Home)
-    object Pay : BottomNavItem("pay", "Bayar", Icons.Default.ShoppingCart)
+    object Home : BottomNavItem("home", "Kelola", Icons.Default.Home)
+    object Pay : BottomNavItem("pay", "Setor", Icons.Default.ShoppingCart)
     object History : BottomNavItem("history", "Riwayat", Icons.Default.List)
     object Profile : BottomNavItem("profile", "Profil", Icons.Default.Person)
 }
