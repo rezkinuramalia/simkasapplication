@@ -78,24 +78,24 @@ data class DashboardAngkatanResponse(
 // ==========================================
 // 5. TRANSAKSI
 // ==========================================
-// UPDATE DATA CLASS INI:
 data class TransaksiResponse(
     val id: Long,
-    val idUser: Int?,
+    val idUser: Long?, // [PERBAIKAN] Ganti Int ke Long? agar aman
     val nominal: Double,
-    val tanggalBayar: String?,
+    val tanggalBayar: String?, // Backend sekarang mengirim String, jadi ini Aman
     val keterangan: String?,
     val jenisTransaksi: String?,
     val statusValidasi: String?,
     val buktiBayar: String?,
     val catatanAdmin: String? = null,
 
-    // TAMBAHAN FIELD BARU (Ini yang menyebabkan error 'namaPengirim')
+    // Field Tambahan
     val namaPengirim: String?,
     val nimPengirim: String?,
     val namaKelas: String?,
     val namaWadah: String?
 ) : Serializable
+
 
 data class TransaksiRequest(
     val idUser: Int, val idKategori: Int, val nominal: Double,
