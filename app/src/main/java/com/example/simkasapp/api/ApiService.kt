@@ -8,46 +8,68 @@ import retrofit2.http.*
 import okhttp3.ResponseBody
 
 interface ApiService {
-    // AUTH
+    // --- AUTH & PROFILE (TETAP) ---
     @POST("api/auth/login")
     fun login(@Body request: LoginRequest): Call<LoginResponse>
 
     @POST("api/auth/register")
     fun register(@Body request: RegisterRequest): Call<String>
 
-    @GET("api/master/kelas")
-    fun getKelasPublic(): Call<List<Kelas>>
-
-    // PROFILE
     @GET("api/users/profile")
     fun getMyProfile(@Header("Authorization") token: String): Call<UserDto>
 
     @PUT("api/users/profile")
     fun updateProfile(@Header("Authorization") token: String, @Body req: UserProfileUpdateRequest): Call<UserDto>
 
-    // MASTER DATA (Wadah/Kategori)
-    // Arahkan ke endpoint MasterDataController yg sudah diperbaiki logic filternya
-    @GET("api/master/kategori")
-    fun getAllKategori(@Header("Authorization") token: String): Call<List<Kategori>>
+    @PUT("api/users/password")
+    fun changePassword(@Header("Authorization") token: String, @Body request: ChangePasswordRequest): Call<ResponseBody>
 
-    @POST("api/master/kategori")
-    fun createKategori(@Header("Authorization") token: String, @Body req: KategoriRequest): Call<Kategori>
-
-    // Master Kelas & Angkatan
+    // --- MASTER DATA KELAS & ANGKATAN (TETAP) ---
     @GET("api/master/kelas")
     fun getAllKelas(@Header("Authorization") token: String): Call<List<Kelas>>
+
+    @GET("api/master/kelas")
+    fun getKelasPublic(): Call<List<Kelas>>
 
     @GET("api/master/angkatan")
     fun getAllAngkatan(@Header("Authorization") token: String): Call<List<Angkatan>>
 
-    // DASHBOARD
+    // --- DASHBOARD (TETAP) ---
     @GET("api/dashboard/kelas")
     fun getDashboardKelas(@Header("Authorization") token: String): Call<DashboardKelasResponse>
 
     @GET("api/dashboard/angkatan")
     fun getDashboardAngkatan(@Header("Authorization") token: String): Call<DashboardAngkatanResponse>
 
-    // TRANSAKSI
+    // ==========================================
+    // [PERBAIKAN UTAMA] KATEGORI / WADAH
+    // ==========================================
+
+    // 1. UNTUK MENU BERANDA (KELOLA): Hanya wadah buatan sendiri
+    @GET("api/master/kategori/managed")
+    fun getKategoriManaged(@Header("Authorization") token: String): Call<List<Kategori>>
+
+    // 2. UNTUK MENU BAYAR (SETOR): Hanya wadah tagihan
+    @GET("api/master/kategori/payment")
+    fun getKategoriPayment(@Header("Authorization") token: String): Call<List<Kategori>>
+
+    // 3. UNTUK TOMBOL NONAKTIFKAN
+    @PUT("api/master/kategori/{id}/status")
+    fun updateStatusKategori(
+        @Header("Authorization") token: String,
+        @Path("id") id: Long,
+        @Query("aktif") aktif: Boolean
+    ): Call<Kategori>
+
+    // 4. CREATE KATEGORI
+    @POST("api/master/kategori")
+    fun createKategori(@Header("Authorization") token: String, @Body req: KategoriRequest): Call<Kategori>
+
+    // 5. GET GENERAL (Backup)
+    @GET("api/master/kategori")
+    fun getAllKategori(@Header("Authorization") token: String): Call<List<Kategori>>
+
+    // --- TRANSAKSI (TETAP) ---
     @Multipart
     @POST("api/transaksi")
     fun createTransaksi(
@@ -59,57 +81,17 @@ interface ApiService {
     @GET("api/transaksi/history")
     fun getMyHistory(@Header("Authorization") token: String): Call<List<HistoryTransaksi>>
 
-
-    @PUT("api/users/password")
-    fun changePassword(
-        @Header("Authorization") token: String,
-        @Body request: ChangePasswordRequest
-    ): Call<ResponseBody> // Returns success/error message
-
-    // ==========================================
-    //  TAMBAHAN WAJIB UNTUK FITUR VALIDASI
-    // ==========================================
-
-    // 1. Endpoint untuk Validasi (Terima/Tolak)
     @PUT("api/transaksi/{id}/validasi")
     fun validasiTransaksi(
         @Header("Authorization") token: String,
         @Path("id") idTransaksi: Long,
-        @Query("status") status: String, // "VALID" atau "REJECTED"
+        @Query("status") status: String,
         @Query("catatan") catatan: String?
     ): Call<TransaksiResponse>
 
-    // 2. Endpoint List Pending per Wadah
     @GET("api/transaksi/pending/kategori/{id}")
-    fun getPendingTransaksi(
-        @Header("Authorization") token: String,
-        @Path("id") idKategori: Long
-    ): Call<List<TransaksiResponse>>
+    fun getPendingTransaksi(@Header("Authorization") token: String, @Path("id") idKategori: Long): Call<List<TransaksiResponse>>
 
-    // 3. Endpoint Total Pemasukan
     @GET("api/transaksi/total/kategori/{id}")
-    fun getTotalPemasukan(
-        @Header("Authorization") token: String,
-        @Path("id") idKategori: Long
-    ): Call<Double>
-
-    @GET("api/master/kategori") // Pastikan ini memanggil endpoint yang menjalankan getKategoriForPaymentByUser()
-    fun getKategori(): Call<List<Kategori>>
-
-
-    // UNTUK BERANDA: List Wadah yang DIKELOLA (Created by me)
-    @GET("api/master/kategori/managed")
-    fun getKategoriManaged(@Header("Authorization") token: String): Call<List<Kategori>>
-
-    // UNTUK MENU BAYAR: List Wadah yang HARUS DIBAYAR (Assigned to me)
-    @GET("api/master/kategori/payment")
-    fun getKategoriPayment(@Header("Authorization") token: String): Call<List<Kategori>>
-
-    // UPDATE STATUS (Nonaktifkan)
-    @PUT("api/master/kategori/{id}/status")
-    fun updateStatusKategori(
-        @Header("Authorization") token: String,
-        @Path("id") id: Long,
-        @Query("aktif") aktif: Boolean
-    ): Call<Kategori>
+    fun getTotalPemasukan(@Header("Authorization") token: String, @Path("id") idKategori: Long): Call<Double>
 }

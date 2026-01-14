@@ -1,6 +1,5 @@
 package com.example.simkasapp.screens
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,11 +32,12 @@ fun WadahListScreen(navController: NavController, token: String) {
         val authToken = if (token.startsWith("Bearer ")) token else "Bearer $token"
 
         // PANGGIL ENDPOINT 'PAYMENT' (Yang harus dibayar)
+        // Backend sudah mengurutkan: Aktif paling atas, Nonaktif paling bawah
         RetrofitClient.instance.getKategoriPayment(authToken).enqueue(object : Callback<List<Kategori>> {
             override fun onResponse(call: Call<List<Kategori>>, response: Response<List<Kategori>>) {
                 isLoading = false
                 if (response.isSuccessful) {
-                    listWadah = response.body() ?: emptyList() // Backend sudah mengurutkan (Aktif di atas)
+                    listWadah = response.body() ?: emptyList()
                 }
             }
             override fun onFailure(call: Call<List<Kategori>>, t: Throwable) { isLoading = false }
@@ -56,6 +56,8 @@ fun WadahListScreen(navController: NavController, token: String) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(listWadah) { wadah ->
                     WadahItemCard(wadah) {
+                        // LOGIKA KLIK:
+                        // Hanya bisa diklik jika AKTIF
                         if (wadah.aktif) {
                             navController.currentBackStackEntry?.savedStateHandle?.set("wadah", wadah)
                             navController.navigate("wadah_detail")
@@ -70,8 +72,10 @@ fun WadahListScreen(navController: NavController, token: String) {
 @Composable
 fun WadahItemCard(wadah: Kategori, onClick: () -> Unit) {
     Card(
+        // Visual Feedback: Abu-abu jika nonaktif
         colors = CardDefaults.cardColors(containerColor = if(wadah.aktif) Color.White else Color(0xFFEEEEEE)),
         elevation = CardDefaults.cardElevation(defaultElevation = if(wadah.aktif) 4.dp else 0.dp),
+        // Disable Click jika nonaktif
         modifier = Modifier.fillMaxWidth().clickable(enabled = wadah.aktif) { onClick() }
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -92,6 +96,7 @@ fun WadahItemCard(wadah: Kategori, onClick: () -> Unit) {
                 )
             }
 
+            // Indikator Status
             if (!wadah.aktif) {
                 Surface(color = Color.Gray, shape = MaterialTheme.shapes.small) {
                     Text("NONAKTIF", modifier = Modifier.padding(4.dp), fontSize = 10.sp, color = Color.White)

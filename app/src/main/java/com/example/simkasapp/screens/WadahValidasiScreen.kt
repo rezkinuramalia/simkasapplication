@@ -23,6 +23,8 @@ import com.example.simkasapp.ui.theme.BpsGreen
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kategori) {
@@ -32,7 +34,7 @@ fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kate
 
     fun loadData() {
         isLoading = true
-        // 1. Ambil List Pending (Sekarang ApiService sudah punya fungsi ini)
+        // 1. Ambil List Pending
         RetrofitClient.instance.getPendingTransaksi(token, wadah.id).enqueue(object : Callback<List<TransaksiResponse>> {
             override fun onResponse(call: Call<List<TransaksiResponse>>, response: Response<List<TransaksiResponse>>) {
                 if (response.isSuccessful) {
@@ -59,8 +61,9 @@ fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kate
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         // Header Wadah
         Text(wadah.nama, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = BpsBlue)
-        // formatRupiah diambil dari DashboardScreen.kt (karena satu package)
-        Text("Total Valid: ${formatRupiah(totalMasuk)}", color = BpsGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+
+        // [PERBAIKAN 1] Gunakan formatRupiahLocal agar tidak error
+        Text("Total Pemasukan: ${formatRupiahLocal(totalMasuk)}", color = BpsGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
         Spacer(modifier = Modifier.height(8.dp))
         Divider(color = Color.LightGray)
@@ -83,11 +86,9 @@ fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kate
                     PendingTransactionCard(
                         trans = trans,
                         onAccept = {
-                            // Validasi -> VALID
                             doValidasi(token, trans.id, "VALID") { loadData() }
                         },
                         onReject = {
-                            // Validasi -> REJECTED
                             doValidasi(token, trans.id, "REJECTED") { loadData() }
                         }
                     )
@@ -98,7 +99,6 @@ fun WadahValidasiScreen(navController: NavController, token: String, wadah: Kate
 }
 
 fun doValidasi(token: String, id: Long, status: String, onSuccess: () -> Unit) {
-    // Tambahkan 'null' sebagai parameter terakhir (catatan)
     RetrofitClient.instance.validasiTransaksi(token, id, status, null).enqueue(object : Callback<TransaksiResponse> {
         override fun onResponse(call: Call<TransaksiResponse>, response: Response<TransaksiResponse>) {
             if (response.isSuccessful) onSuccess()
@@ -120,12 +120,12 @@ fun PendingTransactionCard(trans: TransaksiResponse, onAccept: () -> Unit, onRej
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                // [PERBAIKAN 2] Gunakan formatRupiahLocal
                 Text(
-                    text = "Nominal: ${formatRupiah(trans.nominal)}",
+                    text = "Nominal: ${formatRupiahLocal(trans.nominal)}",
                     fontWeight = FontWeight.Bold,
                     color = BpsBlue
                 )
-                // Keterangan sekarang sudah dikenali dari Models.kt
                 Text(
                     text = trans.keterangan ?: "-",
                     fontSize = 14.sp,
@@ -151,5 +151,8 @@ fun PendingTransactionCard(trans: TransaksiResponse, onAccept: () -> Unit, onRej
     }
 }
 
-// CATATAN: Fungsi formatRupiah dihapus dari sini karena sudah ada di DashboardScreen.kt
-// Kotlin menganggap fungsi di level file (top-level) dalam paket yang sama sebagai global.
+// [SOLUSI] Tambahkan fungsi format rupiah private di sini agar tidak unresolved reference
+private fun formatRupiahLocal(number: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+    return format.format(number)
+}
