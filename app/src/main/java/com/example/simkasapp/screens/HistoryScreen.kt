@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -31,7 +32,7 @@ fun HistoryScreen(navController: NavController, token: String) {
     var listHistory by remember { mutableStateOf<List<HistoryTransaksi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Mengambil LiveData dari savedStateHandle navigasi untuk refresh otomatis
+    // Trigger refresh otomatis jika kembali dari layar lain
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val refreshTrigger by savedStateHandle?.getLiveData<Boolean>("refresh_history")
         ?.observeAsState(false)
@@ -54,10 +55,8 @@ fun HistoryScreen(navController: NavController, token: String) {
         })
     }
 
-    // Load data pertama kali
     LaunchedEffect(Unit) { loadData() }
 
-    // Load ulang data jika ada trigger refresh
     LaunchedEffect(refreshTrigger) {
         if (refreshTrigger) {
             loadData()
@@ -78,7 +77,7 @@ fun HistoryScreen(navController: NavController, token: String) {
                 Text("Belum ada riwayat transaksi.", color = Color.Gray)
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(listHistory) { item ->
                     HistoryItemCard(item)
                 }
@@ -89,10 +88,18 @@ fun HistoryScreen(navController: NavController, token: String) {
 
 @Composable
 fun HistoryItemCard(item: HistoryTransaksi) {
+    val isRejected = item.statusValidasi == "REJECTED"
+
     val colorStatus = when (item.statusValidasi) {
         "VALID" -> BpsGreen
         "REJECTED" -> PastelRed
-        else -> Color(0xFFFFA500) // Orange untuk Pending
+        else -> Color(0xFFFFA500) // Orange
+    }
+
+    val labelStatus = when (item.statusValidasi) {
+        "VALID" -> "DITERIMA"
+        "REJECTED" -> "DITOLAK"
+        else -> "DIPROSES"
     }
 
     Card(
@@ -101,55 +108,70 @@ fun HistoryItemCard(item: HistoryTransaksi) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Baris Atas: Nama Wadah & Status Label
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            // --- Header: Nama Wadah & Status ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = item.namaWadah ?: "Pembayaran Kas",
+                    text = item.namaWadah ?: "Pembayaran",
                     fontWeight = FontWeight.Bold,
                     color = BpsBlue,
+                    fontSize = 16.sp,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = item.statusValidasi ?: "PENDING",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .background(colorStatus, shape = MaterialTheme.shapes.small)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+
+                Surface(
+                    color = colorStatus,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = labelStatus,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Info Detail
-            Text("Nominal: ${formatRupiahLocal(item.nominal)}", fontWeight = FontWeight.SemiBold)
-            Text("Ket: ${item.keterangan ?: "-"}", fontSize = 12.sp, color = Color.Gray)
-            Text("Tgl: ${item.tanggalBayar ?: "-"}", fontSize = 12.sp, color = Color.Gray)
+            // --- Info Utama ---
+            Text("Nominal: ${formatRupiahLocal(item.nominal)}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("Tanggal: ${item.tanggalBayar ?: "-"}", fontSize = 12.sp, color = Color.Gray)
 
-            // [LOGIKA TAMPILAN CATATAN PENOLAKAN]
-            if (item.statusValidasi == "REJECTED" && !item.catatanAdmin.isNullOrEmpty()) {
-                Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray)
+            if (!item.keterangan.isNullOrEmpty()) {
+                Text("Ket: ${item.keterangan}", fontSize = 12.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+            }
 
-                Text(
-                    text = "Alasan Penolakan:",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Red
-                )
-                Text(
-                    text = item.catatanAdmin,
-                    color = Color.Red,
-                    fontSize = 12.sp,
-                    fontStyle = FontStyle.Italic
-                )
+            // --- [INTI MASALAH] BAGIAN CATATAN PENOLAKAN ---
+            // Bagian ini hanya akan muncul jika status REJECTED dan ada catatan dari backend
+            if (isRejected && !item.catatanAdmin.isNullOrEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Divider(color = PastelRed.copy(alpha = 0.3f))
+                Spacer(Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.Top) {
+                    Text(
+                        text = "Alasan Penolakan: ",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PastelRed
+                    )
+                    Text(
+                        text = item.catatanAdmin,
+                        color = PastelRed,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
 }
 
-// Helper format rupiah private agar tidak bentrok
 private fun formatRupiahLocal(number: Double): String {
     val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-    return format.format(number)
+    return format.format(number).replace("Rp", "Rp ").replace(",00", "")
 }
