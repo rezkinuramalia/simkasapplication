@@ -1,9 +1,7 @@
 package com.example.simkasapp.screens
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
@@ -15,8 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import com.example.simkasapp.ui.theme.BpsBlue
-import com.example.simkasapp.ui.theme.BpsOrange
+import com.example.simkasapp.ui.theme.PastelBlue
+import com.example.simkasapp.ui.theme.PastelOrange
 
 // Define Menu Items
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
@@ -35,36 +33,31 @@ fun MainContainerScreen(navController: NavController) {
 
     var currentScreen by remember { mutableStateOf<BottomNavItem>(BottomNavItem.Home) }
 
-    Scaffold(
-        // === TOMBOL TAMBAH (+) DI TENGAH ===
-        // Hanya muncul jika user BUKAN Anggota biasa (Admin / Bendahara)
-        floatingActionButton = {
-            if (role != "ANGGOTA") {
-                FloatingActionButton(
-                    onClick = { navController.navigate("create_kategori") }, // Ke layar buat wadah
-                    containerColor = BpsOrange,
-                    contentColor = Color.White,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Buat Wadah")
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center, // Posisi di tengah
+    // === LOGIKA MENU DINAMIS ===
+    val items = remember(role) {
+        if (role == "ADMIN_ANGKATAN") {
+            // Admin Angkatan: Hapus Menu Setor & Riwayat
+            // Hanya bisa Mengelola (Home) dan lihat Profil
+            listOf(
+                BottomNavItem.Home,
+                BottomNavItem.Profile
+            )
+        } else {
+            // Role Lain (Anggota/Bendahara): Tampilkan Semua
+            listOf(
+                BottomNavItem.Home,
+                BottomNavItem.Pay,
+                BottomNavItem.History,
+                BottomNavItem.Profile
+            )
+        }
+    }
 
+    Scaffold(
         // === BOTTOM NAVIGATION BAR ===
         bottomBar = {
-            NavigationBar(containerColor = BpsBlue) {
-                val items = listOf(
-                    BottomNavItem.Home,
-                    BottomNavItem.Pay,
-                    BottomNavItem.History,
-                    BottomNavItem.Profile
-                )
-
+            NavigationBar(containerColor = PastelBlue) { // Pakai warna PastelBlue
                 items.forEach { item ->
-                    // Jika role bukan anggota, beri jarak di tengah untuk tombol (+)
-                    // Logika sederhana: Pay di kiri, History di kanan
                     val isSelected = currentScreen == item
 
                     NavigationBarItem(
@@ -73,9 +66,9 @@ fun MainContainerScreen(navController: NavController) {
                         selected = isSelected,
                         onClick = { currentScreen = item },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = BpsBlue,
-                            selectedTextColor = BpsOrange,
-                            indicatorColor = BpsOrange,
+                            selectedIconColor = PastelBlue, // Ikon terpilih biru pastel
+                            selectedTextColor = PastelOrange, // Teks terpilih orange pastel
+                            indicatorColor = Color.White, // Lingkaran background putih
                             unselectedIconColor = Color.White.copy(alpha = 0.7f),
                             unselectedTextColor = Color.White.copy(alpha = 0.7f)
                         )
@@ -89,8 +82,8 @@ fun MainContainerScreen(navController: NavController) {
                 BottomNavItem.Home -> DashboardScreenContent(token, role, navController)
                 BottomNavItem.Pay -> WadahListScreen(navController, token)
                 BottomNavItem.History -> HistoryScreen(navController, token)
-                BottomNavItem.History -> Text("Halaman Riwayat (Segera Hadir)") // Nanti diganti HistoryScreen
                 BottomNavItem.Profile -> ProfileScreen(navController, token)
+                else -> {} // Fallback aman
             }
         }
     }

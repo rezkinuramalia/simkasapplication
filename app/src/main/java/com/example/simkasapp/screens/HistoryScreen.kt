@@ -19,6 +19,7 @@ import com.example.simkasapp.api.RetrofitClient
 import com.example.simkasapp.models.HistoryTransaksi
 import com.example.simkasapp.ui.theme.BpsBlue
 import com.example.simkasapp.ui.theme.BpsGreen
+import com.example.simkasapp.ui.theme.PastelRed
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -90,7 +91,7 @@ fun HistoryScreen(navController: NavController, token: String) {
 fun HistoryItemCard(item: HistoryTransaksi) {
     val colorStatus = when (item.statusValidasi) {
         "VALID" -> BpsGreen
-        "REJECTED" -> Color.Red
+        "REJECTED" -> PastelRed
         else -> Color(0xFFFFA500) // Orange untuk Pending
     }
 

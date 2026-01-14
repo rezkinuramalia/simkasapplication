@@ -30,6 +30,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import okhttp3.ResponseBody
 import com.example.simkasapp.ui.theme.BpsGreen
+import com.example.simkasapp.ui.theme.PastelRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,7 +222,7 @@ fun ProfileScreen(navController: NavController, token: String) {
                 prefs.edit().clear().apply()
                 navController.navigate("login") { popUpTo(0) }
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+            colors = ButtonDefaults.buttonColors(containerColor = PastelRed),
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.ExitToApp, contentDescription = null)

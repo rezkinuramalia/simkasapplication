@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -27,6 +28,7 @@ import com.example.simkasapp.models.Kategori
 import com.example.simkasapp.models.UserDto  // Import yang Benar
 import com.example.simkasapp.ui.theme.BpsBlue
 import com.example.simkasapp.ui.theme.BpsOrange
+import com.example.simkasapp.ui.theme.PastelRed
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -207,7 +209,7 @@ fun WadahItemCardDashboard(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Nonaktifkan",
-                        tint = Color.Red
+                        tint = PastelRed
                     )
                 }
             } else {
@@ -291,7 +293,7 @@ fun AnggotaDashboardContent(token: String) {
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Halo, $userName!", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text("Halo, $userName!", color = Color.White, textAlign = TextAlign.Center, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text("Selamat Datang di SimKas", color = Color.White.copy(alpha = 0.9f))
                 }
